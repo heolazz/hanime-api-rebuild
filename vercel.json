@@ -1,0 +1,25 @@
+{
+  "version": 2,
+
+  "builds": [
+    {
+      "src": "providers/miruro/api.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+
+  "routes": [
+    {
+      "src": "^/api/v2/miruro/(.*)$",
+      "dest": "providers/miruro/api.py"
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "api/index.js"
+    }
+  ]
+}
