@@ -8,7 +8,6 @@ const providers = {
 };
 
 const lazyProviders = {
-  hianime: () => import('../providers/hianime/index.js'),
 };
 
 export async function getProvider(name) {
