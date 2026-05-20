@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { Buffer } from 'node:buffer';
 import { getProvider, getProviderWithFallback } from '../core/providerManager.js';
 import { withCache, TTL, cacheStats } from '../utils/cache.js';
+import miruroRouter from './miruro.js';
 
 const app = new Hono();
 
@@ -718,6 +719,9 @@ app.get('/api/v2/miruro/watch/:provider/:anilist_id/:category/:slug', async (c) 
     return c.json({ success: false, error: e.message }, 500);
   }
 });
+
+// Mount the rest of Miruro routes from api/miruro.js
+app.route('/api/v2/miruro', miruroRouter);
 
 app.notFound((c) => {
   return c.json({
