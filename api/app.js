@@ -32,8 +32,7 @@ app.get('/', (c) => {
   <div class="w-72 flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
     <div class="p-6 border-b border-gray-200">
       <h1 class="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-        Anime API
+        Kinoharth API
       </h1>
       <p class="text-[11px] text-gray-500 mt-1.5 uppercase tracking-widest font-bold">Playground</p>
     </div>
