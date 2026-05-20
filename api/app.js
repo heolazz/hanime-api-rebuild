@@ -414,6 +414,29 @@ app.get('/api/nav', async (c) => {
   }
 });
 
+// ─── Miruro Mock Routes ────────────────────────────────────────────────────────
+app.get('/api/v2/miruro/watch/:provider/:anilist_id/:category/:slug', async (c) => {
+  return c.json({
+    success: true,
+    message: 'Miruro watch route detected',
+    data: {
+      provider: c.req.param('provider'),
+      anilist_id: c.req.param('anilist_id'),
+      category: c.req.param('category'),
+      slug: c.req.param('slug')
+    }
+  });
+});
+
+app.notFound((c) => {
+  return c.json({
+    success: false,
+    error: 'Route not found',
+    method: c.req.method,
+    path: c.req.path
+  }, 404);
+});
+
 // ─── Error handler ────────────────────────────────────────────────────────────
 app.onError((error, c) => {
   console.error('[FATAL]', error);
