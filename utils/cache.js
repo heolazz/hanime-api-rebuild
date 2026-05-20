@@ -44,6 +44,11 @@ export function cacheGet(key) {
  */
 export function cacheSet(key, value, ttlSeconds) {
   store.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
+  
+  // Lazy purge (1% chance on each set) to prevent memory unbounded growth without global setInterval
+  if (Math.random() < 0.01) {
+    cachePurge();
+  }
 }
 
 /**
@@ -66,10 +71,8 @@ export function cachePurge() {
   }
 }
 
-// Auto-purge every 10 minutes so the Map never grows stale forever.
-// `unref()` ensures the timer doesn't keep the process alive on exit.
-const purgeTimer = setInterval(cachePurge, 10 * 60 * 1000);
-if (purgeTimer.unref) purgeTimer.unref();
+// Removed global setInterval because Cloudflare Workers disallows async I/O or timers in the global scope.
+// Memory management is now handled via lazy purging in cacheSet.
 
 // ─── Route helper ─────────────────────────────────────────────────────────────
 
