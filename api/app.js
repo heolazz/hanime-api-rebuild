@@ -629,6 +629,52 @@ async function getSources(episodeId, provider, anilistId, category = "sub") {
   return await _decodePipeResponse(text.trim());
 }
 
+function _injectSourceSlugs(data, anilistId) {
+  const providers = data.providers || {};
+  for (const [providerName, providerData] of Object.entries(providers)) {
+    if (typeof providerData !== 'object' || providerData === null) continue;
+    
+    let episodes = providerData.episodes || {};
+    if (typeof episodes !== 'object' || episodes === null) {
+      if (Array.isArray(episodes)) {
+        providerData.episodes = { sub: episodes };
+        episodes = providerData.episodes;
+      } else {
+        continue;
+      }
+    }
+    
+    for (const [category, epList] of Object.entries(episodes)) {
+      if (!Array.isArray(epList)) continue;
+      
+      for (const ep of epList) {
+        if (typeof ep !== 'object' || ep === null) continue;
+        
+        if (ep.id && ep.number) {
+          const origId = ep.id;
+          const prefix = origId.includes(':') ? origId.split(':')[0] : origId;
+          ep.id = `watch/${providerName}/${anilistId}/${category}/${prefix}-${ep.number}`;
+        }
+      }
+    }
+  }
+  return data;
+}
+
+app.get('/api/v2/miruro/episodes/:anilist_id', async (c) => {
+  try {
+    const anilist_id = parseInt(c.req.param('anilist_id'));
+    const data = await _fetchRawEpisodes(anilist_id);
+    return c.json({
+      success: true,
+      data: _injectSourceSlugs(data, anilist_id)
+    });
+  } catch (e) {
+    console.error("Miruro Episodes Error:", e);
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
 app.get('/api/v2/miruro/watch/:provider/:anilist_id/:category/:slug', async (c) => {
   try {
     const provider = c.req.param('provider');
