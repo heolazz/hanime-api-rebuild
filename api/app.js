@@ -1,5 +1,6 @@
 // api/app.js
 import { Hono } from 'hono';
+import { Buffer } from 'node:buffer';
 import { getProvider, getProviderWithFallback } from '../core/providerManager.js';
 import { withCache, TTL, cacheStats } from '../utils/cache.js';
 
@@ -414,18 +415,169 @@ app.get('/api/nav', async (c) => {
   }
 });
 
-// ─── Miruro Mock Routes ────────────────────────────────────────────────────────
-app.get('/api/v2/miruro/watch/:provider/:anilist_id/:category/:slug', async (c) => {
-  return c.json({
-    success: true,
-    message: 'Miruro watch route detected',
-    data: {
-      provider: c.req.param('provider'),
-      anilist_id: c.req.param('anilist_id'),
-      category: c.req.param('category'),
-      slug: c.req.param('slug')
+// ─── Miruro Watch Route (JS Implementation for Cloudflare) ─────────────────────
+const MIRURO_PIPE_URL = "https://www.miruro.tv/api/secure/pipe";
+const MIRURO_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+  "Referer": "https://www.miruro.tv/"
+};
+
+function _encodePipeRequest(payload) {
+  return Buffer.from(JSON.stringify(payload)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function _decodePipeResponse(encodedStr) {
+  let padded = encodedStr;
+  while (padded.length % 4) padded += '=';
+  padded = padded.replace(/-/g, '+').replace(/_/g, '/');
+  
+  const compressedBuffer = Buffer.from(padded, 'base64');
+  
+  if (typeof DecompressionStream !== 'undefined') {
+    const ds = new DecompressionStream('gzip');
+    const writer = ds.writable.getWriter();
+    writer.write(compressedBuffer);
+    writer.close();
+    
+    const reader = ds.readable.getReader();
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
     }
-  });
+    
+    const totalLength = chunks.reduce((acc, val) => acc + val.length, 0);
+    const decompressedBuffer = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      decompressedBuffer.set(chunk, offset);
+      offset += chunk.length;
+    }
+    
+    const text = new TextDecoder('utf-8').decode(decompressedBuffer);
+    return JSON.parse(text);
+  } else {
+    // Fallback if DecompressionStream is missing
+    const zlib = await import('node:zlib');
+    return new Promise((resolve, reject) => {
+      zlib.unzip(compressedBuffer, (err, buffer) => {
+        if (err) reject(err);
+        else resolve(JSON.parse(buffer.toString('utf-8')));
+      });
+    });
+  }
+}
+
+function _translateId(encodedId) {
+  try {
+    let padded = encodedId;
+    while (padded.length % 4) padded += '=';
+    padded = padded.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = Buffer.from(padded, 'base64').toString('utf-8');
+    if (decoded.includes(':')) return decoded;
+    return encodedId;
+  } catch (e) {
+    return encodedId;
+  }
+}
+
+function _deepTranslate(obj) {
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      if (typeof item === 'object' && item !== null) _deepTranslate(item);
+    }
+  } else if (typeof obj === 'object' && obj !== null) {
+    for (const key of Object.keys(obj)) {
+      if (key === 'id' && typeof obj[key] === 'string') {
+        obj[key] = _translateId(obj[key]);
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        _deepTranslate(obj[key]);
+      }
+    }
+  }
+}
+
+async function _fetchRawEpisodes(anilistId) {
+  const payload = {
+    path: "episodes",
+    method: "GET",
+    query: { anilistId: parseInt(anilistId) },
+    body: null,
+    version: "0.1.0"
+  };
+  const encodedReq = _encodePipeRequest(payload);
+  const res = await fetch(`${MIRURO_PIPE_URL}?e=${encodedReq}`, { headers: MIRURO_HEADERS });
+  if (!res.ok) throw new Error("Pipe request failed");
+  const text = await res.text();
+  const data = await _decodePipeResponse(text.trim());
+  _deepTranslate(data);
+  return data;
+}
+
+async function getSources(episodeId, provider, anilistId, category = "sub") {
+  const encId = Buffer.from(episodeId).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const payload = {
+    path: "sources",
+    method: "GET",
+    query: {
+      episodeId: encId,
+      provider: provider,
+      category: category,
+      anilistId: parseInt(anilistId)
+    },
+    body: null,
+    version: "0.1.0"
+  };
+  const encodedReq = _encodePipeRequest(payload);
+  const res = await fetch(`${MIRURO_PIPE_URL}?e=${encodedReq}`, { headers: MIRURO_HEADERS });
+  if (!res.ok) throw new Error("Pipe request failed");
+  const text = await res.text();
+  return await _decodePipeResponse(text.trim());
+}
+
+app.get('/api/v2/miruro/watch/:provider/:anilist_id/:category/:slug', async (c) => {
+  try {
+    const provider = c.req.param('provider');
+    const anilist_id = parseInt(c.req.param('anilist_id'));
+    const category = c.req.param('category');
+    const slug = c.req.param('slug');
+    
+    const data = await _fetchRawEpisodes(anilist_id);
+    const provData = (data.providers || {})[provider] || {};
+    
+    // In python API, episodes dict can either have categories directly or be an array (defaults to 'sub')
+    let episodesRaw = provData.episodes || {};
+    if (Array.isArray(episodesRaw)) {
+      episodesRaw = { sub: episodesRaw };
+    }
+    const epList = episodesRaw[category] || [];
+    
+    let targetId = null;
+    for (const ep of epList) {
+      if (typeof ep !== 'object') continue;
+      const origId = ep.id || "";
+      const prefix = origId.includes(":") ? origId.split(":")[0] : origId;
+      const generated = `${prefix}-${ep.number}`;
+      if (generated === slug) {
+        targetId = origId;
+        break;
+      }
+    }
+    
+    if (!targetId) {
+      return c.json({ success: false, error: `Episode slug '${slug}' not found for provider ${provider}` }, 404);
+    }
+    
+    const sources = await getSources(targetId, provider, anilist_id, category);
+    return c.json({
+      success: true,
+      data: sources
+    });
+  } catch (e) {
+    console.error("Miruro Watch Error:", e);
+    return c.json({ success: false, error: e.message }, 500);
+  }
 });
 
 app.notFound((c) => {
