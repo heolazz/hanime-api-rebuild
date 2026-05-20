@@ -6,7 +6,7 @@ import { withCache, TTL, cacheStats } from '../utils/cache.js';
 
 const app = new Hono();
 
-// ─── Root (API Playground UI) ────────────────────────────────────────────────
+// // ─── Root (API Playground UI) ────────────────────────────────────────────────
 app.get('/', (c) => {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -16,60 +16,61 @@ app.get('/', (c) => {
   <title>Anime API Playground</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #1f2937; }
-    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-    .string { color: #a5d6ff; }
-    .number { color: #79c0ff; }
-    .boolean { color: #ff7b72; }
-    .null { color: #ff7b72; }
-    .key { color: #7ee787; font-weight: 500; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    .string { color: #059669; } /* emerald-600 */
+    .number { color: #2563eb; } /* blue-600 */
+    .boolean { color: #d97706; } /* amber-600 */
+    .null { color: #dc2626; } /* red-600 */
+    .key { color: #7c3aed; font-weight: 500; } /* violet-600 */
   </style>
 </head>
-<body class="bg-gray-900 text-gray-100 h-screen flex overflow-hidden font-sans">
+<body class="bg-gray-50 text-gray-800 h-screen w-screen overflow-hidden flex font-sans">
   
-  <div class="w-1/3 flex flex-col border-r border-gray-700 bg-gray-800 max-w-sm">
-    <div class="p-5 border-b border-gray-700">
-      <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Anime API</h1>
-      <p class="text-sm text-gray-400 mt-1">Interactive Playground</p>
+  <div class="w-72 flex-shrink-0 flex flex-col bg-white border-r border-gray-200 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+    <div class="p-6 border-b border-gray-200">
+      <h1 class="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        Anime API
+      </h1>
+      <p class="text-[11px] text-gray-500 mt-1.5 uppercase tracking-widest font-bold">Playground</p>
     </div>
-    <div class="flex-1 overflow-y-auto p-4 space-y-2" id="endpoint-list"></div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-1" id="endpoint-list"></div>
   </div>
 
-  <div class="flex-1 flex flex-col bg-gray-900">
-    <div class="p-4 bg-gray-800 border-b border-gray-700 flex gap-3 items-center">
-      <div class="bg-emerald-600/20 text-emerald-400 font-bold px-4 py-2 rounded">GET</div>
-      <input type="text" id="url-input" class="flex-1 bg-gray-950 border border-gray-600 rounded-lg px-4 py-2 text-gray-100 focus:outline-none focus:border-blue-500 transition font-mono text-sm" value="/api/v2/anikoto/home">
-      <button id="send-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-2 rounded-lg transition shadow-lg shadow-blue-900/20">Send</button>
+  <div class="flex-1 flex flex-col bg-gray-50 min-w-0">
+    <div class="p-4 bg-white border-b border-gray-200 flex gap-3 items-center z-20">
+      <div class="bg-blue-50 text-blue-600 font-bold px-3 py-1.5 rounded text-sm tracking-wide">GET</div>
+      <input type="text" id="url-input" class="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition font-mono text-sm min-w-0" value="/api/v2/anikoto/home">
+      <button id="send-btn" class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-lg transition shadow-sm shadow-blue-600/20 active:scale-95">Send Request</button>
     </div>
 
-    <div class="flex-1 p-4 overflow-hidden flex flex-col">
-      <div class="flex justify-between items-center mb-3">
-        <h2 class="font-semibold text-gray-400 flex items-center gap-2">
-          Response Body
-        </h2>
-        <div id="status-badge" class="px-3 py-1 rounded-full text-xs font-bold hidden transition-all"></div>
+    <div class="flex-1 p-6 overflow-hidden flex flex-col">
+      <div class="flex justify-between items-center mb-3 px-1">
+        <h2 class="font-semibold text-gray-700 text-sm tracking-wide">Response Body</h2>
+        <div id="status-badge" class="px-3 py-1 rounded-full text-[11px] font-bold hidden transition-all border tracking-wide uppercase"></div>
       </div>
-      <div class="flex-1 bg-gray-950 border border-gray-800 rounded-xl overflow-auto relative shadow-inner">
-        <div id="loading" class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center hidden z-10">
-           <svg class="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      <div class="flex-1 bg-white border border-gray-200 rounded-xl overflow-auto relative shadow-sm">
+        <div id="loading" class="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex items-center justify-center hidden z-10">
+           <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
         </div>
-        <pre id="json-output" class="p-6 text-sm font-mono leading-relaxed"></pre>
+        <pre id="json-output" class="p-6 text-[13px] font-mono leading-relaxed text-gray-800 min-w-max"></pre>
       </div>
     </div>
   </div>
 
   <script>
     const endpoints = [
-      { name: "Home Page", url: "/api/v2/anikoto/home", desc: "Get trending & latest anime" },
-      { name: "Search Anime", url: "/api/v2/anikoto/search?q=classroom", desc: "Search by keyword" },
-      { name: "Anime Details", url: "/api/v2/anikoto/anime/6957", desc: "Get info by ID" },
-      { name: "Episodes List", url: "/api/v2/anikoto/anime/6957/episodes", desc: "Get all episodes" },
-      { name: "Single Episode (Anikoto)", url: "/api/v2/anikoto/anime/6957/ep/1", desc: "Get streaming sources" },
-      { name: "Watch (Miruro)", url: "/api/v2/miruro/watch/kiwi/113415/sub/animepahe-2", desc: "Get sources from Miruro" },
-      { name: "Nav Menu", url: "/api/v2/anikoto/nav", desc: "Get navigation links" },
-      { name: "Browse/Filter", url: "/api/v2/anikoto/browse?type[]=TV&sort=score", desc: "Filter by genre, type, etc" }
+      { name: "Home Page", url: "/api/v2/anikoto/home" },
+      { name: "Search Anime", url: "/api/v2/anikoto/search?q=classroom" },
+      { name: "Anime Details", url: "/api/v2/anikoto/anime/6957" },
+      { name: "Episodes List", url: "/api/v2/anikoto/anime/6957/episodes" },
+      { name: "Single Episode", url: "/api/v2/anikoto/anime/6957/ep/1" },
+      { name: "Watch (Miruro)", url: "/api/v2/miruro/watch/kiwi/113415/sub/animepahe-2" },
+      { name: "Nav Menu", url: "/api/v2/anikoto/nav" },
+      { name: "Browse/Filter", url: "/api/v2/anikoto/browse?type[]=TV&sort=score" }
     ];
 
     const list = document.getElementById('endpoint-list');
@@ -80,9 +81,9 @@ app.get('/', (c) => {
 
     endpoints.forEach(ep => {
       const btn = document.createElement('button');
-      btn.className = "w-full text-left p-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition border border-transparent hover:border-blue-500/50 focus:outline-none group";
-      btn.innerHTML = \`<div class="font-bold text-gray-200 group-hover:text-blue-400 transition">\${ep.name}</div>
-                       <div class="text-xs text-gray-500 mt-1 truncate">\${ep.url}</div>\`;
+      btn.className = "w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 transition focus:outline-none group mb-1 border border-transparent hover:border-gray-200";
+      btn.innerHTML = \`<div class="font-semibold text-gray-700 group-hover:text-blue-600 transition text-[13px]">\${ep.name}</div>
+                       <div class="text-[11px] text-gray-400 mt-1 truncate font-mono">\${ep.url}</div>\`;
       btn.onclick = () => { input.value = ep.url; fetchData(); };
       list.appendChild(btn);
     });
@@ -113,8 +114,11 @@ app.get('/', (c) => {
         const time = Math.round(performance.now() - start);
         
         stat.textContent = \`\${res.status} \${res.statusText} • \${time}ms\`;
-        stat.classList.remove('hidden', 'bg-emerald-600', 'bg-red-600', 'bg-yellow-600');
-        stat.classList.add(res.ok ? 'bg-emerald-600' : (res.status >= 500 ? 'bg-red-600' : 'bg-yellow-600'));
+        stat.classList.remove('hidden', 'bg-green-50', 'text-green-600', 'border-green-200', 'bg-red-50', 'text-red-600', 'border-red-200', 'bg-yellow-50', 'text-yellow-600', 'border-yellow-200');
+        
+        if (res.ok) stat.classList.add('bg-green-50', 'text-green-600', 'border-green-200');
+        else if (res.status >= 500) stat.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+        else stat.classList.add('bg-yellow-50', 'text-yellow-600', 'border-yellow-200');
 
         const isJson = res.headers.get('content-type')?.includes('application/json');
         if (isJson) {
@@ -124,9 +128,9 @@ app.get('/', (c) => {
         }
       } catch (err) {
         stat.textContent = 'Network Error';
-        stat.classList.remove('hidden', 'bg-emerald-600', 'bg-yellow-600');
-        stat.classList.add('bg-red-600');
-        out.innerHTML = \`<span class="text-red-400">\${err.message}</span>\`;
+        stat.classList.remove('hidden', 'bg-green-50', 'text-green-600', 'border-green-200', 'bg-yellow-50', 'text-yellow-600', 'border-yellow-200');
+        stat.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+        out.innerHTML = \`<span class="text-red-500">\${err.message}</span>\`;
       } finally {
         load.classList.add('hidden');
       }
