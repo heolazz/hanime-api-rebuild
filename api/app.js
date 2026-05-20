@@ -6,50 +6,140 @@ import { withCache, TTL, cacheStats } from '../utils/cache.js';
 
 const app = new Hono();
 
-// ─── Root ────────────────────────────────────────────────────────────────────
-app.get('/', (c) => c.json({
-  status: 'ok',
-  message: 'Anime API',
-  providers: ['anikai', 'anikoto', 'miruro'],
-  defaultProvider: 'anikoto',
-  docs: 'See README.md for endpoint documentation',
-  endpoints: {
-    anime: '/api/v2/{provider}/anime/{id}',
-    episodes: '/api/v2/{provider}/anime/{id}/episodes',
-    episode: '/api/v2/{provider}/anime/{id}/ep/{number}',
-    search: '/api/v2/{provider}/search?q=',
-    browse: '/api/v2/{provider}/browse',
-    home: '/api/v2/{provider}/home',
-    index: '/api/v2/{provider}/index',
-    genre: '/api/v2/{provider}/genre/{name}',
-    category: '/api/v2/{provider}/category/{name}',
-    type: '/api/v2/{provider}/type/{name}',
-    azlist: '/api/v2/{provider}/azlist/{sort}',
-    nav: '/api/v2/{provider}/nav',
-    miruro: {
-      note: 'Miruro routes served by the Python runtime — all responses use { success, data } format',
-      home: '/api/v2/miruro/home',
-      index: '/api/v2/miruro/index',
-      nav: '/api/v2/miruro/nav',
-      search: '/api/v2/miruro/search?query=',
-      suggestions: '/api/v2/miruro/suggestions?query=',
-      filter: '/api/v2/miruro/filter',
-      spotlight: '/api/v2/miruro/spotlight',
-      trending: '/api/v2/miruro/trending',
-      popular: '/api/v2/miruro/popular',
-      upcoming: '/api/v2/miruro/upcoming',
-      recent: '/api/v2/miruro/recent',
-      schedule: '/api/v2/miruro/schedule',
-      info: '/api/v2/miruro/info/{anilist_id}',
-      characters: '/api/v2/miruro/anime/{anilist_id}/characters',
-      relations: '/api/v2/miruro/anime/{anilist_id}/relations',
-      recommendations: '/api/v2/miruro/anime/{anilist_id}/recommendations',
-      episodes: '/api/v2/miruro/episodes/{anilist_id}',
-      sources: '/api/v2/miruro/sources',
-      watch: '/api/v2/miruro/watch/{provider}/{anilist_id}/{category}/{slug}',
+// ─── Root (API Playground UI) ────────────────────────────────────────────────
+app.get('/', (c) => {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anime API Playground</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    .string { color: #a5d6ff; }
+    .number { color: #79c0ff; }
+    .boolean { color: #ff7b72; }
+    .null { color: #ff7b72; }
+    .key { color: #7ee787; font-weight: 500; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen flex overflow-hidden font-sans">
+  
+  <div class="w-1/3 flex flex-col border-r border-gray-700 bg-gray-800 max-w-sm">
+    <div class="p-5 border-b border-gray-700">
+      <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Anime API</h1>
+      <p class="text-sm text-gray-400 mt-1">Interactive Playground</p>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-2" id="endpoint-list"></div>
+  </div>
+
+  <div class="flex-1 flex flex-col bg-gray-900">
+    <div class="p-4 bg-gray-800 border-b border-gray-700 flex gap-3 items-center">
+      <div class="bg-emerald-600/20 text-emerald-400 font-bold px-4 py-2 rounded">GET</div>
+      <input type="text" id="url-input" class="flex-1 bg-gray-950 border border-gray-600 rounded-lg px-4 py-2 text-gray-100 focus:outline-none focus:border-blue-500 transition font-mono text-sm" value="/api/v2/anikoto/home">
+      <button id="send-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-2 rounded-lg transition shadow-lg shadow-blue-900/20">Send</button>
+    </div>
+
+    <div class="flex-1 p-4 overflow-hidden flex flex-col">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-semibold text-gray-400 flex items-center gap-2">
+          Response Body
+        </h2>
+        <div id="status-badge" class="px-3 py-1 rounded-full text-xs font-bold hidden transition-all"></div>
+      </div>
+      <div class="flex-1 bg-gray-950 border border-gray-800 rounded-xl overflow-auto relative shadow-inner">
+        <div id="loading" class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center hidden z-10">
+           <svg class="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        </div>
+        <pre id="json-output" class="p-6 text-sm font-mono leading-relaxed"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const endpoints = [
+      { name: "Home Page", url: "/api/v2/anikoto/home", desc: "Get trending & latest anime" },
+      { name: "Search Anime", url: "/api/v2/anikoto/search?q=classroom", desc: "Search by keyword" },
+      { name: "Anime Details", url: "/api/v2/anikoto/anime/6957", desc: "Get info by ID" },
+      { name: "Episodes List", url: "/api/v2/anikoto/anime/6957/episodes", desc: "Get all episodes" },
+      { name: "Single Episode (Anikoto)", url: "/api/v2/anikoto/anime/6957/ep/1", desc: "Get streaming sources" },
+      { name: "Watch (Miruro)", url: "/api/v2/miruro/watch/kiwi/113415/sub/animepahe-2", desc: "Get sources from Miruro" },
+      { name: "Nav Menu", url: "/api/v2/anikoto/nav", desc: "Get navigation links" },
+      { name: "Browse/Filter", url: "/api/v2/anikoto/browse?type[]=TV&sort=score", desc: "Filter by genre, type, etc" }
+    ];
+
+    const list = document.getElementById('endpoint-list');
+    const input = document.getElementById('url-input');
+    const out = document.getElementById('json-output');
+    const stat = document.getElementById('status-badge');
+    const load = document.getElementById('loading');
+
+    endpoints.forEach(ep => {
+      const btn = document.createElement('button');
+      btn.className = "w-full text-left p-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition border border-transparent hover:border-blue-500/50 focus:outline-none group";
+      btn.innerHTML = \`<div class="font-bold text-gray-200 group-hover:text-blue-400 transition">\${ep.name}</div>
+                       <div class="text-xs text-gray-500 mt-1 truncate">\${ep.url}</div>\`;
+      btn.onclick = () => { input.value = ep.url; fetchData(); };
+      list.appendChild(btn);
+    });
+
+    function syntaxHighlight(json) {
+      if (typeof json != 'string') json = JSON.stringify(json, undefined, 2);
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\\\[^u]|[^\\\\"])*"(\\s*:)?|\\b(true|false|null)\\b|-?\\d+(?:\\.\\d*)?(?:[eE][+\\-]?\\d+)?)/g, function (match) {
+        let cls = 'number';
+        if (/^"/.test(match)) {
+          cls = /:$/.test(match) ? 'key' : 'string';
+        } else if (/true|false/.test(match)) cls = 'boolean';
+        else if (/null/.test(match)) cls = 'null';
+        return \`<span class="\${cls}">\${match}</span>\`;
+      });
     }
-  }
-}));
+
+    async function fetchData() {
+      const url = input.value.trim();
+      if (!url) return;
+      load.classList.remove('hidden');
+      out.innerHTML = '';
+      stat.classList.add('hidden');
+      
+      try {
+        const start = performance.now();
+        const res = await fetch(url);
+        const time = Math.round(performance.now() - start);
+        
+        stat.textContent = \`\${res.status} \${res.statusText} • \${time}ms\`;
+        stat.classList.remove('hidden', 'bg-emerald-600', 'bg-red-600', 'bg-yellow-600');
+        stat.classList.add(res.ok ? 'bg-emerald-600' : (res.status >= 500 ? 'bg-red-600' : 'bg-yellow-600'));
+
+        const isJson = res.headers.get('content-type')?.includes('application/json');
+        if (isJson) {
+          out.innerHTML = syntaxHighlight(await res.json());
+        } else {
+          out.textContent = await res.text();
+        }
+      } catch (err) {
+        stat.textContent = 'Network Error';
+        stat.classList.remove('hidden', 'bg-emerald-600', 'bg-yellow-600');
+        stat.classList.add('bg-red-600');
+        out.innerHTML = \`<span class="text-red-400">\${err.message}</span>\`;
+      } finally {
+        load.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('send-btn').onclick = fetchData;
+    input.onkeypress = (e) => { if (e.key === 'Enter') fetchData(); };
+    fetchData(); // run on load
+  </script>
+</body>
+</html>`;
+  return c.html(html);
+});
 
 // ─── Cache stats (optional debug endpoint) ───────────────────────────────────
 app.get('/api/cache/stats', (c) => c.json({ success: true, data: cacheStats() }));
