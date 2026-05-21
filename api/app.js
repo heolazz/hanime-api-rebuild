@@ -75,17 +75,9 @@ app.get('/', (c) => {
       <div id="endpoint-list" class="space-y-0.5"></div>
     </div>
     
-    <!-- Bottom Widget -->
+    <!-- Bottom spacer -->
     <div class="p-4">
-      <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-sm relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-80"></div>
-        <h3 class="font-bold text-gray-900 text-sm mt-1">KinoHarth API</h3>
-        <p class="text-xs text-gray-500 mt-1">AniList metadata proxy</p>
-        <button class="w-full bg-gray-900 hover:bg-gray-800 text-white text-[13px] font-semibold py-2.5 rounded-xl transition-all shadow-md mt-4 active:scale-95">
-          View API Health
-        </button>
-      </div>
-      <div class="text-center mt-4 text-[11px] text-gray-400 font-medium mb-2">
+      <div class="text-center text-[11px] text-gray-400 font-medium">
         © 2026 KinoHarth HQ
       </div>
     </div>
@@ -102,7 +94,7 @@ app.get('/', (c) => {
             Web Data Infrastructure for Anime Applications
           </h1>
           <p class="text-gray-500 text-sm sm:text-base md:text-lg max-w-3xl">
-            A highly reliable and high-performance serverless AniList proxy interface optimized for KinoHarth.
+            A highly reliable and high-performance serverless Miruro proxy interface optimized for KinoHarth.
           </p>
         </div>
 
@@ -137,7 +129,7 @@ app.get('/', (c) => {
         </div>
 
         <!-- Response Area -->
-        <div class="pb-12">
+        <div class="pb-20 md:pb-12">
           <div class="flex justify-between items-center mb-4">
              <div class="text-[11px] font-bold text-gray-400 tracking-widest uppercase">Response Output</div>
              <div id="status-badge" class="px-3 py-1 rounded-full text-[11px] font-bold hidden transition-all border tracking-wide uppercase shadow-sm"></div>
