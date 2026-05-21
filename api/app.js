@@ -1,16 +1,11 @@
 // api/app.js
 import { Hono } from 'hono';
 import { Buffer } from 'node:buffer';
-import { serveStatic } from '@hono/node-server/serve-static';
 import { getProvider, getProviderWithFallback } from '../core/providerManager.js';
 import { withCache, TTL, cacheStats } from '../utils/cache.js';
 import miruroRouter from './miruro.js';
 
 const app = new Hono();
-
-app.use('/public/*', serveStatic({ root: './' }));
-app.use('/logo.png', serveStatic({ path: './public/logo.png' }));
-app.use('/logo.ico', serveStatic({ path: './public/logo.ico' }));
 
 // // ─── Root (API Playground UI) ────────────────────────────────────────────────
 app.get('/', (c) => {
@@ -20,7 +15,6 @@ app.get('/', (c) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KinoHarth API Playground</title>
-  <link rel="icon" href="/logo.ico" type="image/x-icon">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -54,7 +48,9 @@ app.get('/', (c) => {
   <aside class="w-[260px] flex-shrink-0 flex flex-col bg-white border-r border-gray-100 z-10 h-full shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
     <!-- Logo -->
     <div class="px-5 py-6 flex items-center gap-3">
-      <img src="/logo.png" alt="KinoHarth Logo" class="w-8 h-8 rounded-lg shadow-sm object-cover">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+        K
+      </div>
       <span class="font-bold text-gray-900 text-lg tracking-tight">KinoHarth API</span>
     </div>
     
