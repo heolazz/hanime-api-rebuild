@@ -23,29 +23,45 @@ app.get('/', (c) => {
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; border: 2px solid transparent; background-clip: padding-box; }
-    
-    /* Dark mode scrollbar for JSON output */
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border: 2px solid #111827; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; border: 2px solid #111827; }
-    
-    .string { color: #a7f3d0; } /* emerald-200 */
-    .number { color: #93c5fd; } /* blue-300 */
-    .boolean { color: #fcd34d; } /* amber-300 */
-    .null { color: #fca5a5; } /* red-300 */
-    .key { color: #c4b5fd; font-weight: 500; } /* violet-300 */
-    
+    .string { color: #a7f3d0; }
+    .number { color: #93c5fd; }
+    .boolean { color: #fcd34d; }
+    .null { color: #fca5a5; }
+    .key { color: #c4b5fd; font-weight: 500; }
     .mesh-bg {
       background-color: #f8fafc;
       background-image: 
         radial-gradient(at 80% 0%, hsla(289, 40%, 94%, 1) 0px, transparent 50%),
         radial-gradient(at 0% 50%, hsla(210, 40%, 94%, 1) 0px, transparent 50%);
     }
+    #sidebar { transition: transform 0.3s cubic-bezier(.4,0,.2,1); }
+    #sidebar-overlay { transition: opacity 0.3s ease; }
+    @media (max-width: 767px) {
+      #sidebar { position: fixed; top: 0; left: 0; z-index: 50; transform: translateX(-100%); height: 100vh; }
+      #sidebar.open { transform: translateX(0); }
+      #sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+    }
+    @media (min-width: 768px) {
+      #hamburger-btn { display: none !important; }
+      #sidebar-overlay { display: none !important; }
+    }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 h-screen w-screen overflow-hidden flex">
 
+  <!-- MOBILE HAMBURGER -->
+  <button id="hamburger-btn" onclick="toggleSidebar()" class="fixed top-4 left-4 z-[60] w-10 h-10 rounded-xl bg-white shadow-lg border border-gray-200 flex items-center justify-center md:hidden">
+    <svg id="hamburger-icon" class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    <svg id="close-icon" class="w-5 h-5 text-gray-700 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  </button>
+
+  <!-- SIDEBAR OVERLAY -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 opacity-0 pointer-events-none md:hidden"></div>
+
   <!-- SIDEBAR -->
-  <aside class="w-[260px] flex-shrink-0 flex flex-col bg-white border-r border-gray-100 z-10 h-full shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
+  <aside id="sidebar" class="w-[260px] flex-shrink-0 flex flex-col bg-white border-r border-gray-100 z-50 h-full shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
     <!-- Logo -->
     <div class="px-5 py-6 flex items-center gap-3">
       <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
@@ -79,26 +95,26 @@ app.get('/', (c) => {
   <main class="flex-1 flex flex-col min-w-0 mesh-bg h-full overflow-hidden relative">
     
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-5xl mx-auto px-6 py-12 lg:px-10">
+      <div class="max-w-5xl mx-auto px-4 py-8 pt-16 md:pt-12 md:px-6 lg:px-10">
         <!-- Header -->
-        <div class="mb-12">
-          <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mb-3">
+        <div class="mb-8 md:mb-12">
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mb-2 md:mb-3">
             Web Data Infrastructure for Anime Applications
           </h1>
-          <p class="text-gray-500 text-lg max-w-3xl">
+          <p class="text-gray-500 text-sm sm:text-base md:text-lg max-w-3xl">
             A highly reliable and high-performance serverless AniList proxy interface optimized for KinoHarth.
           </p>
         </div>
 
         <!-- Query Console -->
-        <div class="mb-10">
-          <div class="text-[11px] font-bold text-gray-400 tracking-widest uppercase mb-4">Query Console</div>
+        <div class="mb-6 md:mb-10">
+          <div class="text-[11px] font-bold text-gray-400 tracking-widest uppercase mb-3 md:mb-4">Query Console</div>
           
-          <div class="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-8 sm:p-10 relative overflow-hidden">
+          <div class="bg-white rounded-2xl md:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-5 sm:p-8 md:p-10 relative overflow-hidden">
             <!-- Decorative gradient -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] md:w-[300px] h-[200px] md:h-[300px] bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"></div>
             
-            <h2 class="text-2xl font-bold text-gray-900 mb-8 text-center relative z-10">What do you want to build or query?</h2>
+            <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-5 md:mb-8 text-center relative z-10">What do you want to build or query?</h2>
             
             <div class="flex flex-col sm:flex-row gap-3 max-w-3xl mx-auto relative z-10">
               <div class="flex-shrink-0 bg-indigo-50/80 text-indigo-600 font-bold px-4 py-3.5 rounded-2xl text-sm flex items-center justify-center border border-indigo-100/50 hidden sm:flex">
@@ -110,9 +126,9 @@ app.get('/', (c) => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
                   </svg>
                 </div>
-                <input type="text" id="url-input" class="w-full bg-gray-50/50 backdrop-blur-sm border border-gray-200 rounded-2xl pl-12 pr-4 py-3.5 text-gray-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition font-mono text-sm shadow-sm" value="/api/v2/anikoto/home" placeholder="Enter endpoint URL...">
+                <input type="text" id="url-input" class="w-full bg-gray-50/50 backdrop-blur-sm border border-gray-200 rounded-2xl pl-12 pr-4 py-3 md:py-3.5 text-gray-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition font-mono text-xs sm:text-sm shadow-sm" value="/api/v2/anikoto/home" placeholder="Enter endpoint URL...">
               </div>
-              <button id="send-btn" class="flex-shrink-0 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-8 py-3.5 rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
+              <button id="send-btn" class="flex-shrink-0 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 md:px-8 py-3 md:py-3.5 rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto">
                 <span>Send</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
               </button>
@@ -127,22 +143,22 @@ app.get('/', (c) => {
              <div id="status-badge" class="px-3 py-1 rounded-full text-[11px] font-bold hidden transition-all border tracking-wide uppercase shadow-sm"></div>
           </div>
           
-          <div class="bg-[#111827] rounded-3xl shadow-xl border border-gray-800 relative overflow-hidden flex flex-col min-h-[450px]">
+          <div class="bg-[#111827] rounded-2xl md:rounded-3xl shadow-xl border border-gray-800 relative overflow-hidden flex flex-col min-h-[280px] sm:min-h-[350px] md:min-h-[450px]">
             <!-- Window controls (Mac style dots) -->
-            <div class="h-12 bg-[#1f2937] border-b border-gray-800/80 flex items-center px-5 gap-2 relative">
-              <div class="flex gap-2">
-                <div class="w-3 h-3 rounded-full bg-[#ef4444] border border-[#dc2626]"></div>
-                <div class="w-3 h-3 rounded-full bg-[#f59e0b] border border-[#d97706]"></div>
-                <div class="w-3 h-3 rounded-full bg-[#10b981] border border-[#059669]"></div>
+            <div class="h-10 md:h-12 bg-[#1f2937] border-b border-gray-800/80 flex items-center px-3 md:px-5 gap-2 relative">
+              <div class="flex gap-1.5 md:gap-2">
+                <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#ef4444] border border-[#dc2626]"></div>
+                <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#f59e0b] border border-[#d97706]"></div>
+                <div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#10b981] border border-[#059669]"></div>
               </div>
-              <div class="absolute left-1/2 -translate-x-1/2 text-xs font-mono text-gray-400 px-4 py-1.5 bg-gray-900/50 rounded-md border border-gray-700/50 max-w-[50%] truncate" id="response-url">Waiting for request...</div>
+              <div class="absolute left-1/2 -translate-x-1/2 text-[10px] md:text-xs font-mono text-gray-400 px-2 md:px-4 py-1 md:py-1.5 bg-gray-900/50 rounded-md border border-gray-700/50 max-w-[60%] md:max-w-[50%] truncate" id="response-url">Waiting for request...</div>
             </div>
 
             <div id="loading" class="absolute inset-0 bg-[#111827]/80 backdrop-blur-sm flex items-center justify-center hidden z-10 mt-12">
                <svg class="animate-spin h-10 w-10 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             </div>
             
-            <pre id="json-output" class="p-6 sm:p-8 text-[13.5px] font-mono leading-relaxed text-gray-300 overflow-auto flex-1 custom-scrollbar"></pre>
+            <pre id="json-output" class="p-3 sm:p-6 md:p-8 text-[11px] sm:text-[12.5px] md:text-[13.5px] font-mono leading-relaxed text-gray-300 overflow-auto flex-1 custom-scrollbar"></pre>
           </div>
         </div>
       </div>
@@ -253,7 +269,30 @@ app.get('/', (c) => {
 
     document.getElementById('send-btn').onclick = fetchData;
     input.onkeypress = (e) => { if (e.key === 'Enter') fetchData(); };
-    fetchData(); // run on load
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      const hIcon = document.getElementById('hamburger-icon');
+      const cIcon = document.getElementById('close-icon');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+      hIcon.classList.toggle('hidden');
+      cIcon.classList.toggle('hidden');
+    }
+    window.toggleSidebar = toggleSidebar;
+
+    // Auto-close sidebar on endpoint click (mobile)
+    const origOnclicks = [];
+    document.querySelectorAll('.endpoint-btn').forEach(btn => {
+      const orig = btn.onclick;
+      btn.onclick = function() {
+        if (orig) orig.call(this);
+        if (window.innerWidth < 768) toggleSidebar();
+      };
+    });
+
+    fetchData();
   </script>
 </body>
 </html>`;
