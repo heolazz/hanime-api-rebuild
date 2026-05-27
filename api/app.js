@@ -881,6 +881,75 @@ app.get('/api/v2/miruro/watch/:provider/:anilist_id/:category/:slug', async (c) 
   }
 });
 
+// ─── Animepahe via Consumet (Kwik m3u8 extractor) ─────────────────────────────
+app.get('/api/v2/animepahe/stream', async (c) => {
+  const query = c.req.query('q');
+  const episode = parseInt(c.req.query('episode') || '1', 10);
+
+  if (!query) {
+    return c.json({ success: false, error: 'Missing required query parameter: q' }, 400);
+  }
+
+  try {
+    const { ANIME } = await import('@consumet/extensions');
+    const animepahe = new ANIME.AnimePahe();
+
+    // 1. Search
+    const searchRes = await animepahe.search(query);
+    const results = searchRes.results || [];
+
+    if (results.length === 0) {
+      return c.json({ success: false, error: `No results found for "${query}"` }, 404);
+    }
+
+    // Pick best match (case-insensitive partial)
+    const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizedQuery = normalize(query);
+    const bestMatch =
+      results.find((r) => normalize(r.title || '') === normalizedQuery) ||
+      results.find((r) => normalize(r.title || '').includes(normalizedQuery) || normalizedQuery.includes(normalize(r.title || ''))) ||
+      results[0];
+
+    // 2. Fetch anime info (episode list)
+    const info = await animepahe.fetchAnimeInfo(bestMatch.id);
+    const epMatch = (info.episodes || []).find((ep) => ep.number === episode);
+
+    if (!epMatch) {
+      return c.json({
+        success: false,
+        error: `Episode ${episode} not found for "${bestMatch.title}"`,
+        anime: { id: bestMatch.id, title: bestMatch.title, totalEpisodes: info.totalEpisodes }
+      }, 404);
+    }
+
+    // 3. Extract m3u8 sources
+    const streamInfo = await animepahe.fetchEpisodeSources(epMatch.id);
+    const sources = streamInfo.sources || [];
+
+    // Prefer highest quality
+    const source =
+      sources.find((s) => s.quality === '1080p') ||
+      sources.find((s) => s.quality === '720p') ||
+      sources.find((s) => s.url) ||
+      sources[0];
+
+    return c.json({
+      success: true,
+      data: {
+        anime: { id: bestMatch.id, title: bestMatch.title },
+        episode: episode,
+        url: source?.url || null,
+        quality: source?.quality || null,
+        isM3U8: source?.isM3U8 ?? true,
+        sources: sources.map((s) => ({ url: s.url, quality: s.quality, isM3U8: s.isM3U8 })),
+      }
+    });
+  } catch (e) {
+    console.error('Animepahe Consumet Error:', e);
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
 // Mount the rest of Miruro routes from api/miruro.js
 app.route('/api/v2/miruro', miruroRouter);
 
