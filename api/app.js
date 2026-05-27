@@ -738,7 +738,22 @@ function _deepTranslate(obj) {
   }
 }
 
-async function _fetchRawEpisodes(anilistId) {
+function _getMiruroHeaders(c) {
+  const headers = { ...MIRURO_HEADERS };
+  if (c && c.req) {
+    const clientIp = c.req.header('x-forwarded-for') || c.req.header('cf-connecting-ip') || c.req.header('x-real-ip');
+    if (clientIp) {
+      headers['X-Forwarded-For'] = clientIp.split(',')[0].trim();
+    }
+    const clientUa = c.req.header('user-agent');
+    if (clientUa) {
+      headers['User-Agent'] = clientUa;
+    }
+  }
+  return headers;
+}
+
+async function _fetchRawEpisodes(anilistId, c) {
   const payload = {
     path: "episodes",
     method: "GET",
@@ -747,7 +762,7 @@ async function _fetchRawEpisodes(anilistId) {
     version: "0.1.0"
   };
   const encodedReq = _encodePipeRequest(payload);
-  const res = await fetch(`${MIRURO_PIPE_URL}?e=${encodedReq}`, { headers: MIRURO_HEADERS });
+  const res = await fetch(`${MIRURO_PIPE_URL}?e=${encodedReq}`, { headers: _getMiruroHeaders(c) });
   if (!res.ok) throw new Error("Pipe request failed");
   const text = await res.text();
   const data = await _decodePipeResponse(text.trim());
@@ -755,7 +770,7 @@ async function _fetchRawEpisodes(anilistId) {
   return data;
 }
 
-async function getSources(episodeId, provider, anilistId, category = "sub") {
+async function getSources(episodeId, provider, anilistId, category = "sub", c) {
   const encId = Buffer.from(episodeId).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const payload = {
     path: "sources",
@@ -770,7 +785,7 @@ async function getSources(episodeId, provider, anilistId, category = "sub") {
     version: "0.1.0"
   };
   const encodedReq = _encodePipeRequest(payload);
-  const res = await fetch(`${MIRURO_PIPE_URL}?e=${encodedReq}`, { headers: MIRURO_HEADERS });
+  const res = await fetch(`${MIRURO_PIPE_URL}?e=${encodedReq}`, { headers: _getMiruroHeaders(c) });
   if (!res.ok) throw new Error("Pipe request failed");
   const text = await res.text();
   return await _decodePipeResponse(text.trim());
@@ -811,7 +826,7 @@ function _injectSourceSlugs(data, anilistId) {
 app.get('/api/v2/miruro/episodes/:anilist_id', async (c) => {
   try {
     const anilist_id = parseInt(c.req.param('anilist_id'));
-    const data = await _fetchRawEpisodes(anilist_id);
+    const data = await _fetchRawEpisodes(anilist_id, c);
     return c.json({
       success: true,
       data: _injectSourceSlugs(data, anilist_id)
@@ -829,7 +844,7 @@ app.get('/api/v2/miruro/watch/:provider/:anilist_id/:category/:slug', async (c) 
     const category = c.req.param('category');
     const slug = c.req.param('slug');
 
-    const data = await _fetchRawEpisodes(anilist_id);
+    const data = await _fetchRawEpisodes(anilist_id, c);
     const provData = (data.providers || {})[provider] || {};
 
     // In python API, episodes dict can either have categories directly or be an array (defaults to 'sub')
@@ -855,7 +870,7 @@ app.get('/api/v2/miruro/watch/:provider/:anilist_id/:category/:slug', async (c) 
       return c.json({ success: false, error: `Episode slug '${slug}' not found for provider ${provider}` }, 404);
     }
 
-    const sources = await getSources(targetId, provider, anilist_id, category);
+    const sources = await getSources(targetId, provider, anilist_id, category, c);
     return c.json({
       success: true,
       data: sources
