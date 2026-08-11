@@ -764,7 +764,8 @@ async function _fetchRawEpisodes(anilistId, c) {
   const encodedReq = _encodePipeRequest(payload);
   const res = await fetch(`${MIRURO_PIPE_URL}?e=${encodedReq}`, { headers: _getMiruroHeaders(c) });
   if (!res.ok) {
-    const errorText = await res.text().catch(() => '');
+    let errorText = '';
+    try { errorText = await res.text(); } catch(err) {}
     throw new Error(`Pipe request failed (Episodes): ${res.status} ${res.statusText} - ${errorText.substring(0, 150)}`);
   }
   const text = await res.text();
@@ -790,7 +791,8 @@ async function getSources(episodeId, provider, anilistId, category = "sub", c) {
   const encodedReq = _encodePipeRequest(payload);
   const res = await fetch(`${MIRURO_PIPE_URL}?e=${encodedReq}`, { headers: _getMiruroHeaders(c) });
   if (!res.ok) {
-    const errorText = await res.text().catch(() => '');
+    let errorText = '';
+    try { errorText = await res.text(); } catch(err) {}
     throw new Error(`Pipe request failed (Sources): ${res.status} ${res.statusText} - ${errorText.substring(0, 150)}`);
   }
   const text = await res.text();
