@@ -1,7 +1,10 @@
 name = "hanime-api-kinoharth"
 main = "api/cloudflare.js"
-compatibility_date = "2024-05-02"
+compatibility_date = "2024-09-23"
 compatibility_flags = [ "nodejs_compat" ]
 
 [observability]
 enabled = true
+
+[alias]
+"got-scraping" = "./api/dummy.js"
